@@ -44,22 +44,26 @@ public class ShopServiceImpl extends ServiceImpl<ShopMapper, Shop> implements IS
 
     @Override
     public Result queryById(Long id) {
-        // 解决缓存穿透
+        // 根据id查询商铺信息
+        // 使用缓存客户端查询，解决缓存穿透问题
+        // 参数说明：缓存key前缀、商铺id、返回值类型、查询函数、缓存时间、时间单位
         Shop shop = cacheClient
                 .queryWithPassThrough(CACHE_SHOP_KEY, id, Shop.class, this::getById, CACHE_SHOP_TTL, TimeUnit.MINUTES);
 
-        // 互斥锁解决缓存击穿
+        // 以下是其他解决缓存击穿的方案(已注释)
+        // 方案1:使用互斥锁解决缓存击穿
         // Shop shop = cacheClient
         //         .queryWithMutex(CACHE_SHOP_KEY, id, Shop.class, this::getById, CACHE_SHOP_TTL, TimeUnit.MINUTES);
 
-        // 逻辑过期解决缓存击穿
+        // 方案2:使用逻辑过期解决缓存击穿
         // Shop shop = cacheClient
         //         .queryWithLogicalExpire(CACHE_SHOP_KEY, id, Shop.class, this::getById, 20L, TimeUnit.SECONDS);
 
+        // 判断商铺是否存在
         if (shop == null) {
             return Result.fail("店铺不存在！");
         }
-        // 7.返回
+        // 返回查询到的商铺信息
         return Result.ok(shop);
     }
 

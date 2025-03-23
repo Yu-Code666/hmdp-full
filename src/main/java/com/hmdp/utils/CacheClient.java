@@ -42,6 +42,18 @@ public class CacheClient {
         stringRedisTemplate.opsForValue().set(key, JSONUtil.toJsonStr(redisData));
     }
 
+    /**
+     * 缓存穿透解决方案
+     * @param keyPrefix key前缀
+     * @param id 查询的id
+     * @param type 返回值类型
+     * @param dbFallback 查询数据库的函数
+     * @param time 过期时间
+     * @param unit 时间单位
+     * @return 泛型R
+     * @param <R> 返回值类型
+     * @param <ID> id类型
+     */
     public <R,ID> R queryWithPassThrough(
             String keyPrefix, ID id, Class<R> type, Function<ID, R> dbFallback, Long time, TimeUnit unit){
         String key = keyPrefix + id;
@@ -49,25 +61,25 @@ public class CacheClient {
         String json = stringRedisTemplate.opsForValue().get(key);
         // 2.判断是否存在
         if (StrUtil.isNotBlank(json)) {
-            // 3.存在，直接返回
+            // 3.存在，直接返回,将JSON字符串反序列化为对象
             return JSONUtil.toBean(json, type);
         }
-        // 判断命中的是否是空值
+        // 判断命中的是否是空值,这里的null是""空字符串
         if (json != null) {
-            // 返回一个错误信息
+            // 返回错误信息,缓存穿透的时候会返回
             return null;
         }
 
-        // 4.不存在，根据id查询数据库
+        // 4.不存在，根据id查询数据库,这里使用函数式编程
         R r = dbFallback.apply(id);
-        // 5.不存在，返回错误
+        // 5.数据库也不存在，返回错误
         if (r == null) {
-            // 将空值写入redis
+            // 将空值写入redis,解决缓存穿透问题
             stringRedisTemplate.opsForValue().set(key, "", CACHE_NULL_TTL, TimeUnit.MINUTES);
             // 返回错误信息
             return null;
         }
-        // 6.存在，写入redis
+        // 6.存在，写入redis,设置过期时间
         this.set(key, r, time, unit);
         return r;
     }
