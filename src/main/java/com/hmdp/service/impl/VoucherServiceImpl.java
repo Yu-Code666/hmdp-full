@@ -41,18 +41,23 @@ public class VoucherServiceImpl extends ServiceImpl<VoucherMapper, Voucher> impl
     }
 
     @Override
-    @Transactional
+    @Transactional // 添加事务注解,确保数据的一致性
     public void addSeckillVoucher(Voucher voucher) {
-        // 保存优惠券
+        // 保存优惠券基本信息到tb_voucher表
         save(voucher);
-        // 保存秒杀信息
+        // 创建秒杀优惠券对象并设置秒杀信息
         SeckillVoucher seckillVoucher = new SeckillVoucher();
+        // 设置关联的优惠券id
         seckillVoucher.setVoucherId(voucher.getId());
+        // 设置秒杀库存
         seckillVoucher.setStock(voucher.getStock());
+        // 设置秒杀开始时间
         seckillVoucher.setBeginTime(voucher.getBeginTime());
+        // 设置秒杀结束时间
         seckillVoucher.setEndTime(voucher.getEndTime());
+        // 保存秒杀信息到tb_seckill_voucher表
         seckillVoucherService.save(seckillVoucher);
-        // 保存秒杀库存到Redis中
+        // 保存秒杀库存到Redis中,key为前缀+优惠券id,value为库存值
         stringRedisTemplate.opsForValue().set(SECKILL_STOCK_KEY + voucher.getId(), voucher.getStock().toString());
     }
 }

@@ -34,6 +34,9 @@ public class BlogController {
 
     @PutMapping("/like/{id}")
     public Result likeBlog(@PathVariable("id") Long id) {
+        // 处理博客点赞请求
+        // @PathVariable("id")注解用于获取URL路径中的博客id参数
+        // 调用博客服务层的likeBlog方法实现点赞或取消点赞功能
         return blogService.likeBlog(id);
     }
 
@@ -56,11 +59,15 @@ public class BlogController {
 
     @GetMapping("/{id}")
     public Result queryBlogById(@PathVariable("id") Long id) {
+        // 根据博客id查询博客信息
+        // 调用博客服务层的方法获取指定id的博客详情
         return blogService.queryBlogById(id);
     }
 
     @GetMapping("/likes/{id}")
     public Result queryBlogLikes(@PathVariable("id") Long id) {
+        // 根据博客id查询点赞该博客的用户列表
+        // 调用博客服务层的方法获取点赞该博客的前5名用户
         return blogService.queryBlogLikes(id);
     }
 

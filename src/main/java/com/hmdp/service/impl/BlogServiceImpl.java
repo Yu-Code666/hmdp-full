@@ -71,15 +71,21 @@ public class BlogServiceImpl extends ServiceImpl<BlogMapper, Blog> implements IB
         // 1.查询blog
         Blog blog = getById(id);
         if (blog == null) {
+            // 如果博客不存在，返回失败结果
             return Result.fail("笔记不存在！");
         }
         // 2.查询blog有关的用户
-        queryBlogUser(blog);
+        queryBlogUser(blog);  // 调用方法获取博客作者信息
         // 3.查询blog是否被点赞
-        isBlogLiked(blog);
+        isBlogLiked(blog);  // 检查当前登录用户是否对该博客点过赞
+        // 返回查询到的博客信息
         return Result.ok(blog);
     }
 
+    /**
+     * 判断博客是否被当前用户点赞
+     * @param blog 博客对象
+     */
     private void isBlogLiked(Blog blog) {
         // 1.获取登录用户
         UserDTO user = UserHolder.getUser();
@@ -90,7 +96,9 @@ public class BlogServiceImpl extends ServiceImpl<BlogMapper, Blog> implements IB
         Long userId = user.getId();
         // 2.判断当前登录用户是否已经点赞
         String key = "blog:liked:" + blog.getId();
+        // 从Redis的ZSet中查询用户的点赞记录，score不为null则表示用户已点赞
         Double score = stringRedisTemplate.opsForZSet().score(key, userId.toString());
+        // 设置博客的isLike属性，标记当前用户是否点赞过该博客
         blog.setIsLike(score != null);
     }
 
@@ -121,24 +129,37 @@ public class BlogServiceImpl extends ServiceImpl<BlogMapper, Blog> implements IB
         return Result.ok();
     }
 
+    /**
+     * 查询博客点赞用户列表
+     * @param id 博客ID
+     * @return 点赞用户列表
+     */
     @Override
     public Result queryBlogLikes(Long id) {
+        // 构建Redis键，用于存储博客点赞信息
         String key = BLOG_LIKED_KEY + id;
         // 1.查询top5的点赞用户 zrange key 0 4
+        // 从Redis的有序集合中获取分数最低的前5个用户（即最早点赞的5个用户）
         Set<String> top5 = stringRedisTemplate.opsForZSet().range(key, 0, 4);
+        // 如果没有人点赞，则返回空列表
         if (top5 == null || top5.isEmpty()) {
             return Result.ok(Collections.emptyList());
         }
         // 2.解析出其中的用户id
+        // 将字符串类型的用户ID转换为Long类型
         List<Long> ids = top5.stream().map(Long::valueOf).collect(Collectors.toList());
+        // 将用户ID列表转换为逗号分隔的字符串，用于SQL查询
         String idStr = StrUtil.join(",", ids);
         // 3.根据用户id查询用户 WHERE id IN ( 5 , 1 ) ORDER BY FIELD(id, 5, 1)
+        // 查询数据库获取用户信息，并保持与Redis中相同的顺序
+        // ORDER BY FIELD确保返回的用户顺序与传入的id顺序一致
         List<UserDTO> userDTOS = userService.query()
                 .in("id", ids).last("ORDER BY FIELD(id," + idStr + ")").list()
                 .stream()
+                // 将User对象转换为UserDTO对象，减少数据传输量
                 .map(user -> BeanUtil.copyProperties(user, UserDTO.class))
                 .collect(Collectors.toList());
-        // 4.返回
+        // 4.返回点赞用户列表
         return Result.ok(userDTOS);
     }
 

@@ -27,10 +27,10 @@ public class VoucherController {
      * @param voucher 优惠券信息，包含秒杀信息
      * @return 优惠券id
      */
-    @PostMapping("seckill")
-    public Result addSeckillVoucher(@RequestBody Voucher voucher) {
-        voucherService.addSeckillVoucher(voucher);
-        return Result.ok(voucher.getId());
+    @PostMapping("seckill") // 处理POST请求,路径为/voucher/seckill
+    public Result addSeckillVoucher(@RequestBody Voucher voucher) { // @RequestBody注解用于接收前端传来的JSON数据并转换为Voucher对象
+        voucherService.addSeckillVoucher(voucher); // 调用服务层方法添加秒杀券
+        return Result.ok(voucher.getId()); // 返回添加成功的优惠券id
     }
 
     /**

@@ -25,8 +25,13 @@ public class VoucherOrderController {
     @Resource
     private IVoucherOrderService voucherOrderService;
 
-    @PostMapping("seckill/{id}")
-    public Result seckillVoucher(@PathVariable("id") Long voucherId) {
-        return voucherOrderService.seckillVoucher(voucherId);
+    /**
+     * 秒杀优惠券下单
+     * @param voucherId 优惠券id
+     * @return 订单创建结果
+     */
+    @PostMapping("seckill/{id}") // 处理秒杀下单请求,路径为/voucher-order/seckill/{id}
+    public Result seckillVoucher(@PathVariable("id") Long voucherId) { // @PathVariable注解用于获取URL中的id参数
+        return voucherOrderService.seckillVoucher(voucherId); // 调用服务层处理秒杀下单逻辑
     }
 }

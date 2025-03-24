@@ -68,16 +68,20 @@ public class ShopServiceImpl extends ServiceImpl<ShopMapper, Shop> implements IS
     }
 
     @Override
-    @Transactional
+    @Transactional // 添加事务注解,保证数据库操作的原子性
     public Result update(Shop shop) {
+        // 获取店铺id
         Long id = shop.getId();
+        // 判断店铺id是否为空
         if (id == null) {
             return Result.fail("店铺id不能为空");
         }
-        // 1.更新数据库
+        // 1.更新数据库中的店铺信息
         updateById(shop);
-        // 2.删除缓存
+        // 2.删除Redis缓存,保证缓存一致性
+        // 这里采用删除缓存的策略,而不是更新缓存,是为了避免缓存和数据库不一致的问题
         stringRedisTemplate.delete(CACHE_SHOP_KEY + id);
+        // 返回更新成功的结果
         return Result.ok();
     }
 
