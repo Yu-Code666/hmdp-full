@@ -86,6 +86,11 @@ public class BlogController {
     @GetMapping("/of/follow")
     public Result queryBlogOfFollow(
             @RequestParam("lastId") Long max, @RequestParam(value = "offset", defaultValue = "0") Integer offset){
+        // 查询当前用户关注的博主的博客列表
+        // @GetMapping("/of/follow") 表示处理获取关注的人发布的博客的GET请求
+        // @RequestParam("lastId") Long max 参数表示上一次查询的最小时间戳，用于分页查询
+        // @RequestParam(value = "offset", defaultValue = "0") Integer offset 参数表示与上一次查询相同时间戳的博客的偏移量
+        // 调用博客服务层的queryBlogOfFollow方法实现滚动分页查询关注的博主的博客
         return blogService.queryBlogOfFollow(max, offset);
     }
 }

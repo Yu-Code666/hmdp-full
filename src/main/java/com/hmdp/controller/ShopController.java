@@ -63,15 +63,18 @@ public class ShopController {
      * 根据商铺类型分页查询商铺信息
      * @param typeId 商铺类型
      * @param current 页码
+     * @param x 经度坐标，用于计算距离，可选参数
+     * @param y 纬度坐标，用于计算距离，可选参数
      * @return 商铺列表
      */
     @GetMapping("/of/type")
     public Result queryShopByType(
-            @RequestParam("typeId") Integer typeId,
-            @RequestParam(value = "current", defaultValue = "1") Integer current,
-            @RequestParam(value = "x", required = false) Double x,
-            @RequestParam(value = "y", required = false) Double y
+            @RequestParam("typeId") Integer typeId, // 商铺类型ID，必需参数
+            @RequestParam(value = "current", defaultValue = "1") Integer current, // 当前页码，默认为1
+            @RequestParam(value = "x", required = false) Double x, // 用户当前位置的经度，非必需参数
+            @RequestParam(value = "y", required = false) Double y // 用户当前位置的纬度，非必需参数
     ) {
+       // 调用服务层方法，根据商铺类型、分页信息和位置坐标查询商铺
        return shopService.queryShopByType(typeId, current, x, y);
     }
 

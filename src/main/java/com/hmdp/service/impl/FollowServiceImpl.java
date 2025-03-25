@@ -77,21 +77,30 @@ public class FollowServiceImpl extends ServiceImpl<FollowMapper, Follow> impleme
     public Result followCommons(Long id) {
         // 1.获取当前用户
         Long userId = UserHolder.getUser().getId();
+        // 构建当前登录用户的关注集合key
         String key = "follows:" + userId;
         // 2.求交集
+        // 构建目标用户的关注集合key
         String key2 = "follows:" + id;
+        // 使用Redis的集合交集操作，查找当前用户和目标用户共同关注的用户ID集合
         Set<String> intersect = stringRedisTemplate.opsForSet().intersect(key, key2);
         if (intersect == null || intersect.isEmpty()) {
-            // 无交集
+            // 无交集，表示没有共同关注的用户
+            // 返回空列表结果
             return Result.ok(Collections.emptyList());
         }
         // 3.解析id集合
+        // 将字符串类型的用户ID转换为Long类型的ID列表
         List<Long> ids = intersect.stream().map(Long::valueOf).collect(Collectors.toList());
         // 4.查询用户
+        // 根据用户ID列表批量查询用户信息
+        // 将User对象转换为UserDTO对象，减少数据传输量
+        // 使用BeanUtil.copyProperties进行对象属性复制
         List<UserDTO> users = userService.listByIds(ids)
                 .stream()
                 .map(user -> BeanUtil.copyProperties(user, UserDTO.class))
                 .collect(Collectors.toList());
+        // 返回共同关注的用户列表
         return Result.ok(users);
     }
 }

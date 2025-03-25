@@ -192,54 +192,75 @@ public class BlogServiceImpl extends ServiceImpl<BlogMapper, Blog> implements IB
         // 1.获取当前用户
         Long userId = UserHolder.getUser().getId();
         // 2.查询收件箱 ZREVRANGEBYSCORE key Max Min LIMIT offset count
+        // 构建用户的收件箱key
         String key = FEED_KEY + userId;
+        // 使用Redis的ZSet数据结构，按照分数（时间戳）从大到小查询收件箱中的数据
+        // max参数表示查询分数小于等于max的数据
+        // offset和2分别表示跳过offset条数据后取2条数据
         Set<ZSetOperations.TypedTuple<String>> typedTuples = stringRedisTemplate.opsForZSet()
                 .reverseRangeByScoreWithScores(key, 0, max, offset, 2);
         // 3.非空判断
+        // 如果收件箱为空，则直接返回空结果
         if (typedTuples == null || typedTuples.isEmpty()) {
             return Result.ok();
         }
         // 4.解析数据：blogId、minTime（时间戳）、offset
+        // 创建一个列表存储博客ID
         List<Long> ids = new ArrayList<>(typedTuples.size());
-        long minTime = 0; // 2
-        int os = 1; // 2
-        for (ZSetOperations.TypedTuple<String> tuple : typedTuples) { // 5 4 4 2 2
+        long minTime = 0; // 记录本次查询的最小时间戳
+        int os = 1; // 记录与最小时间戳相同的元素个数，用于下次查询的偏移量
+        for (ZSetOperations.TypedTuple<String> tuple : typedTuples) { // 遍历查询结果
             // 4.1.获取id
+            // 将博客ID添加到列表中
             ids.add(Long.valueOf(tuple.getValue()));
             // 4.2.获取分数(时间戳）
             long time = tuple.getScore().longValue();
+            // 如果当前元素的时间戳与最小时间戳相同，则计数器加1
             if(time == minTime){
                 os++;
             }else{
+                // 如果不同，则更新最小时间戳，并重置计数器为1
                 minTime = time;
                 os = 1;
             }
         }
 
         // 5.根据id查询blog
+        // 将ID列表转换为逗号分隔的字符串，用于SQL查询
         String idStr = StrUtil.join(",", ids);
+        // 使用MyBatis-Plus查询博客信息，并保持与Redis中相同的顺序
         List<Blog> blogs = query().in("id", ids).last("ORDER BY FIELD(id," + idStr + ")").list();
 
         for (Blog blog : blogs) {
             // 5.1.查询blog有关的用户
+            // 查询并设置博客作者的信息
             queryBlogUser(blog);
             // 5.2.查询blog是否被点赞
+            // 查询当前用户是否对该博客点赞
             isBlogLiked(blog);
         }
 
         // 6.封装并返回
+        // 创建滚动分页结果对象
         ScrollResult r = new ScrollResult();
+        // 设置博客列表
         r.setList(blogs);
+        // 设置下一次查询的偏移量
         r.setOffset(os);
+        // 设置下一次查询的最小时间戳
         r.setMinTime(minTime);
 
         return Result.ok(r);
     }
 
     private void queryBlogUser(Blog blog) {
+        // 获取博客作者的用户ID
         Long userId = blog.getUserId();
+        // 根据用户ID查询用户信息
         User user = userService.getById(userId);
+        // 将用户的昵称设置到博客对象中
         blog.setName(user.getNickName());
+        // 将用户的头像设置到博客对象中
         blog.setIcon(user.getIcon());
     }
 }

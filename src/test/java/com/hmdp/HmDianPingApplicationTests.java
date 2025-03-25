@@ -79,15 +79,19 @@ class HmDianPingApplicationTests {
             String key = SHOP_GEO_KEY + typeId;
             // 3.2.获取同类型的店铺的集合
             List<Shop> value = entry.getValue();
+            // 3.3.创建一个集合，用于存储位置信息
             List<RedisGeoCommands.GeoLocation<String>> locations = new ArrayList<>(value.size());
-            // 3.3.写入redis GEOADD key 经度 纬度 member
+            // 3.4.写入redis GEOADD key 经度 纬度 member
             for (Shop shop : value) {
+                // 单个添加的方式(已注释)
                 // stringRedisTemplate.opsForGeo().add(key, new Point(shop.getX(), shop.getY()), shop.getId().toString());
+                // 批量添加的方式：将店铺id作为member，店铺的坐标作为经纬度存入locations集合
                 locations.add(new RedisGeoCommands.GeoLocation<>(
-                        shop.getId().toString(),
-                        new Point(shop.getX(), shop.getY())
+                        shop.getId().toString(), // 店铺id作为member
+                        new Point(shop.getX(), shop.getY()) // 店铺经纬度坐标
                 ));
             }
+            // 3.5.批量写入Redis，提高性能
             stringRedisTemplate.opsForGeo().add(key, locations);
         }
     }

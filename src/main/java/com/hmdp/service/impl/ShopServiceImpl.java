@@ -98,45 +98,45 @@ public class ShopServiceImpl extends ServiceImpl<ShopMapper, Shop> implements IS
         }
 
         // 2.计算分页参数
-        int from = (current - 1) * SystemConstants.DEFAULT_PAGE_SIZE;
-        int end = current * SystemConstants.DEFAULT_PAGE_SIZE;
+        int from = (current - 1) * SystemConstants.DEFAULT_PAGE_SIZE; // 计算起始索引
+        int end = current * SystemConstants.DEFAULT_PAGE_SIZE; // 计算结束索引
 
         // 3.查询redis、按照距离排序、分页。结果：shopId、distance
-        String key = SHOP_GEO_KEY + typeId;
+        String key = SHOP_GEO_KEY + typeId; // 构建Redis GEO数据结构的key
         GeoResults<RedisGeoCommands.GeoLocation<String>> results = stringRedisTemplate.opsForGeo() // GEOSEARCH key BYLONLAT x y BYRADIUS 10 WITHDISTANCE
                 .search(
-                        key,
-                        GeoReference.fromCoordinate(x, y),
-                        new Distance(5000),
-                        RedisGeoCommands.GeoSearchCommandArgs.newGeoSearchArgs().includeDistance().limit(end)
+                        key, // Redis的key
+                        GeoReference.fromCoordinate(x, y), // 用户当前位置坐标
+                        new Distance(5000), // 搜索半径，单位米
+                        RedisGeoCommands.GeoSearchCommandArgs.newGeoSearchArgs().includeDistance().limit(end) // 包含距离信息并限制返回数量
                 );
         // 4.解析出id
         if (results == null) {
-            return Result.ok(Collections.emptyList());
+            return Result.ok(Collections.emptyList()); // 如果没有结果，返回空列表
         }
-        List<GeoResult<RedisGeoCommands.GeoLocation<String>>> list = results.getContent();
+        List<GeoResult<RedisGeoCommands.GeoLocation<String>>> list = results.getContent(); // 获取搜索结果内容
         if (list.size() <= from) {
             // 没有下一页了，结束
             return Result.ok(Collections.emptyList());
         }
         // 4.1.截取 from ~ end的部分
-        List<Long> ids = new ArrayList<>(list.size());
-        Map<String, Distance> distanceMap = new HashMap<>(list.size());
+        List<Long> ids = new ArrayList<>(list.size()); // 创建列表存储店铺ID
+        Map<String, Distance> distanceMap = new HashMap<>(list.size()); // 创建Map存储店铺ID与距离的映射关系
         list.stream().skip(from).forEach(result -> {
             // 4.2.获取店铺id
-            String shopIdStr = result.getContent().getName();
-            ids.add(Long.valueOf(shopIdStr));
+            String shopIdStr = result.getContent().getName(); // 从GEO结果中获取店铺ID
+            ids.add(Long.valueOf(shopIdStr)); // 将字符串ID转为Long类型并添加到列表
             // 4.3.获取距离
-            Distance distance = result.getDistance();
-            distanceMap.put(shopIdStr, distance);
+            Distance distance = result.getDistance(); // 获取当前店铺与用户的距离
+            distanceMap.put(shopIdStr, distance); // 将店铺ID和距离信息存入Map
         });
         // 5.根据id查询Shop
-        String idStr = StrUtil.join(",", ids);
-        List<Shop> shops = query().in("id", ids).last("ORDER BY FIELD(id," + idStr + ")").list();
+        String idStr = StrUtil.join(",", ids); // 将ID列表转为逗号分隔的字符串，用于SQL查询
+        List<Shop> shops = query().in("id", ids).last("ORDER BY FIELD(id," + idStr + ")").list(); // 查询店铺信息并保持与Redis返回顺序一致
         for (Shop shop : shops) {
-            shop.setDistance(distanceMap.get(shop.getId().toString()).getValue());
+            shop.setDistance(distanceMap.get(shop.getId().toString()).getValue()); // 设置每个店铺与用户的距离
         }
         // 6.返回
-        return Result.ok(shops);
+        return Result.ok(shops); // 返回查询结果
     }
 }
